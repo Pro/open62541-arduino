@@ -706,6 +706,9 @@ function(REGISTER_HARDWARE_PLATFORM PLATFORM_PATH)
             endif()
 
             if(${PLATFORM}_PLATFORM_PATH)
+                set(RUNTIME_PLATFORM_PATH_VAR "${PLATFORM}.runtime.platform.path")
+                set(${RUNTIME_PLATFORM_PATH_VAR} ${${PLATFORM}_PLATFORM_PATH}
+                    CACHE INTERNAL "${PLATFORM} platform path")
                 load_arduino_style_settings(${PLATFORM}_PLATFORM "${PLATFORM_PATH}/platform.txt" ${PLATFORM})
             endif()
 
@@ -1612,61 +1615,117 @@ endfunction()
 function(LOAD_ARDUINO_STYLE_SETTINGS SETTINGS_LIST SETTINGS_PATH SETTINGS_PREFIX)
 
     if(NOT ${SETTINGS_LIST} AND EXISTS ${SETTINGS_PATH})
-    file(STRINGS ${SETTINGS_PATH} FILE_ENTRIES)  # Settings file split into lines
+        file(STRINGS ${SETTINGS_PATH} FILE_ENTRIES)  # Settings file split into lines
 
-    foreach(FILE_ENTRY ${FILE_ENTRIES})
-        if("${FILE_ENTRY}" MATCHES "^[^#]+=.*")
-            string(REGEX MATCH "^[^=]+" SETTING_NAME  ${FILE_ENTRY})
-            string(REGEX MATCH "[^=]+$" SETTING_VALUE ${FILE_ENTRY})
-            string(REPLACE "." ";" ENTRY_NAME_TOKENS ${SETTING_NAME})
-            string(STRIP "${SETTING_VALUE}" SETTING_VALUE)
+        foreach(FILE_ENTRY ${FILE_ENTRIES})
+            if("${FILE_ENTRY}" MATCHES "^[^#]+=.*")
+                string(REGEX MATCH "^[^=]+" SETTING_NAME  ${FILE_ENTRY})
+                string(REGEX MATCH "[^=]+$" SETTING_VALUE ${FILE_ENTRY})
+                string(REPLACE "." ";" ENTRY_NAME_TOKENS ${SETTING_NAME})
+                string(STRIP "${SETTING_VALUE}" SETTING_VALUE)
 
-            list(LENGTH ENTRY_NAME_TOKENS ENTRY_NAME_TOKENS_LEN)
+                list(LENGTH ENTRY_NAME_TOKENS ENTRY_NAME_TOKENS_LEN)
 
-            # Add entry to settings list if it does not exist
-            list(GET ENTRY_NAME_TOKENS 0 ENTRY_NAME)
-            list(FIND ${SETTINGS_LIST} ${ENTRY_NAME} ENTRY_NAME_INDEX)
-            if(ENTRY_NAME_INDEX LESS 0)
-                # Add entry to main list
-                list(APPEND ${SETTINGS_LIST} ${ENTRY_NAME})
-            endif()
-
-            set(FULL_SETTING_NAME "${SETTINGS_PREFIX}")
-
-            set(ENTRY_SETTING_LIST)
-
-            foreach(subsetting ${ENTRY_NAME_TOKENS})
-
-                if (FULL_SETTING_NAME STREQUAL "")
-                    set(FULL_SETTING_NAME "${subsetting}")
-                else()
-                    set(FULL_SETTING_NAME ${FULL_SETTING_NAME}.${subsetting})
+                # Add entry to settings list if it does not exist
+                list(GET ENTRY_NAME_TOKENS 0 ENTRY_NAME)
+                list(FIND ${SETTINGS_LIST} ${ENTRY_NAME} ENTRY_NAME_INDEX)
+                if(ENTRY_NAME_INDEX LESS 0)
+                    # Add entry to main list
+                    list(APPEND ${SETTINGS_LIST} ${ENTRY_NAME})
                 endif()
 
-                if(ENTRY_SETTING_LIST)
-                    list(FIND ${ENTRY_SETTING_LIST} ${FULL_SETTING_NAME} ENTRY_SETTING_INDEX)
-                    if(ENTRY_SETTING_INDEX LESS 0)
-                        # Add setting to entry
-                        list(APPEND ${ENTRY_SETTING_LIST} ${subsetting})
-                        set(${ENTRY_SETTING_LIST} ${${ENTRY_SETTING_LIST}}
-                            CACHE INTERNAL "${PLATFORM} ${FULL_SETTING_NAME} Board settings list")
+                set(FULL_SETTING_NAME "${SETTINGS_PREFIX}")
+
+                set(ENTRY_SETTING_LIST)
+
+                foreach(subsetting ${ENTRY_NAME_TOKENS})
+
+                    if (FULL_SETTING_NAME STREQUAL "")
+                        set(FULL_SETTING_NAME "${subsetting}")
+                    else()
+                        set(FULL_SETTING_NAME ${FULL_SETTING_NAME}.${subsetting})
                     endif()
-                endif()
 
-                set(ENTRY_SETTING_LIST ${FULL_SETTING_NAME}.SETTINGS)
+                    if(ENTRY_SETTING_LIST)
+                        list(FIND ${ENTRY_SETTING_LIST} ${subsetting} ENTRY_SETTING_INDEX)
+                        if(ENTRY_SETTING_INDEX LESS 0)
+                            # Add setting to entry
+                            list(APPEND ${ENTRY_SETTING_LIST} ${subsetting})
+                            set(${ENTRY_SETTING_LIST} ${${ENTRY_SETTING_LIST}}
+                                CACHE INTERNAL "${PLATFORM} ${FULL_SETTING_NAME} Board settings list")
+                        endif()
+                    endif()
 
-            endforeach()
+                    set(ENTRY_SETTING_LIST ${FULL_SETTING_NAME}.SETTINGS)
 
-            # Save setting value
-            set(${FULL_SETTING_NAME} ${SETTING_VALUE}
-                CACHE INTERNAL "${PLATFORM} ${ENTRY_NAME} Board setting")
+                endforeach()
 
+                # Save setting value
+                set(${FULL_SETTING_NAME} ${SETTING_VALUE}
+                    CACHE INTERNAL "${PLATFORM} ${ENTRY_NAME} Board setting")
+
+            endif()
+        endforeach()
+        set(${SETTINGS_LIST} ${${SETTINGS_LIST}}
+            CACHE STRING "List of detected ${PLATFORM} Board configurations")
+        mark_as_advanced(${SETTINGS_LIST})
+    endif()
+endfunction()
+
+# REPLACE_ARDUINO_STYLE_SETTINGS_VARS("${SETTINGS_PREFIX}" "${SETTINGS_PREFIX}" "${SETTINGS_LIST}")
+function(GET_REPLACED_VARIABLE VARIABLE_NAME PLATFORM BOARD_ID)
+
+endfunction()
+
+function(REPLACE_ARDUINO_STYLE_SETTINGS_VARS SETTINGS_PREFIX CURRENT_SETTING SETTINGS_LIST)
+    foreach(ENTRY_SETTING ${${SETTINGS_LIST}})
+        if (CURRENT_SETTING STREQUAL "")
+            set(FULL_SETTING_NAME "${ENTRY_SETTING}")
+        else()
+            set(FULL_SETTING_NAME "${CURRENT_SETTING}.${ENTRY_SETTING}")
+        endif()
+        set(SETTING_VALUE "${${FULL_SETTING_NAME}}")
+
+        if (NOT SETTING_VALUE STREQUAL "")
+            #MESSAGE("${FULL_SETTING_NAME} -> ${SETTING_VALUE}")
+            string(REGEX MATCHALL "{([^}]+)}" VARS_REPLACE ${SETTING_VALUE})
+            LIST(LENGTH VARS_REPLACE MATCH_COUNT)
+            if(MATCH_COUNT GREATER 0)
+                FOREACH(i IN LISTS VARS_REPLACE)
+                    string(REPLACE "}" "" i ${i})
+                    string(REPLACE "{" "" i ${i})
+
+                    set(PREFIXED_NAME "${SETTINGS_PREFIX}.${i}")
+                    if (${PREFIXED_NAME})
+                        set(VAR_VALUE "${${SETTINGS_PREFIX}.${i}}")
+                    elseif(${i})
+                        set(VAR_VALUE "${${i}}")
+                    endif()
+
+                    if(VAR_VALUE)
+                        string(REPLACE "{${i}}" "${VAR_VALUE}" SETTING_VALUE ${SETTING_VALUE})
+                    else()
+                        MESSAGE(WARNING "${i} not found in settings")
+                    endif()
+
+                ENDFOREACH()
+
+
+                set(${FULL_SETTING_NAME} ${SETTING_VALUE}
+                    CACHE INTERNAL "${PLATFORM} ${ENTRY_NAME} Board setting")
+            endif()
+        endif()
+
+
+
+        if(${FULL_SETTING_NAME}.SETTINGS)
+            REPLACE_ARDUINO_STYLE_SETTINGS_VARS("${SETTINGS_PREFIX}" "${FULL_SETTING_NAME}" "${FULL_SETTING_NAME}.SETTINGS")
         endif()
     endforeach()
-    set(${SETTINGS_LIST} ${${SETTINGS_LIST}}
-        CACHE STRING "List of detected ${PLATFORM} Board configurations")
-    mark_as_advanced(${SETTINGS_LIST})
-    endif()
+
+    #
+
+
 endfunction()
 
 #=============================================================================#
