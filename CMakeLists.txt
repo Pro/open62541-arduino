@@ -1,20 +1,39 @@
 cmake_minimum_required(VERSION 2.8.4)
-set(CMAKE_TOOLCHAIN_FILE ${CMAKE_SOURCE_DIR}/cmake/ArduinoToolchain.cmake)
+
+# Set special compilers for esp32
+SET(CMAKE_C_COMPILER "${ARDUINO_SDK_PATH}/hardware/espressif/esp32/tools/xtensa-esp32-elf/bin/xtensa-esp32-elf-gcc")
+SET(CMAKE_C_COMPILER_WORKS 1)
+SET(CMAKE_CXX_COMPILER "${ARDUINO_SDK_PATH}/hardware/espressif/esp32/tools/xtensa-esp32-elf/bin/xtensa-esp32-elf-g++")
+SET(CMAKE_CXX_COMPILER_WORKS 1)
+SET(CMAKE_AR "${ARDUINO_SDK_PATH}/hardware/espressif/esp32/tools/xtensa-esp32-elf/bin/xtensa-esp32-elf-ar")
+SET(CMAKE_RANLIB "${ARDUINO_SDK_PATH}/hardware/espressif/esp32/tools/xtensa-esp32-elf/bin/xtensa-esp32-elf-ranlib")
+
+set(CMAKE_TOOLCHAIN_FILE cmake/ArduinoToolchain.cmake) # Arduino Toolchain
+
+# Set a variable for commands below
 set(PROJECT_NAME arduino_opcua)
+
+# Define your project and language
 project(${PROJECT_NAME})
 
-set(${CMAKE_PROJECT_NAME}_SKETCH arduino_opcua.ino)
+set(${PROJECT_NAME}_BOARD featheresp32)
 
-SET(CMAKE_C_COMPILER "${ARDUINO_SDK_PATH}/hardware/espressif/esp32/tools/xtensa-esp32-elf/bin/xtensa-esp32-elf-gcc")
-SET(CMAKE_CXX_COMPILER "${ARDUINO_SDK_PATH}/hardware/espressif/esp32/tools/xtensa-esp32-elf/bin/xtensa-esp32-elf-g++")
+# Define the source code
+set(${PROJECT_NAME}_SRCS arduino_opcua.cpp aes.c)
 
-register_hardware_platform(${ARDUINO_SDK_PATH}/hardware/espressif/esp32)
+# Define the port for uploading code to the Arduino
+set(${PROJECT_NAME}_PORT /dev/ttyUSB0)
 
-#### Uncomment below additional settings as needed.
-set(${CMAKE_PROJECT_NAME}_BOARD featheresp32)
-# set(${CMAKE_PROJECT_NAME}_PORT /dev/ttyACM0)
-# set(mega.build.mcu atmega2560)
-# set(mega.upload.protocol wiring)
-# set(mega.upload.speed 115200)
+# Select a specific upload speed for the board
+set(${${PROJECT_NAME}_BOARD}.upload.speed 921600)
 
-generate_arduino_firmware(${CMAKE_PROJECT_NAME})
+# Select a specific flash frequence for the board
+set(${${PROJECT_NAME}_BOARD}.build.flash_freq 80m)
+
+
+set(${PROJECT_NAME}_ARDLIBS WiFi)
+set(${PROJECT_NAME}_ARDLIBS_PATH ${ESP32_LIBRARIES_PATH})
+set(${PROJECT_NAME}_LIBS   esp32   wpa_supplicant lwip)
+
+# Command to generate code arduino firmware (.hex file)
+generate_arduino_firmware(${PROJECT_NAME})
