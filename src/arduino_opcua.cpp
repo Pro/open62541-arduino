@@ -1,19 +1,56 @@
 #include <Arduino.h>
 #include "open62541.h"
+#include <NTPClient.h>
 
 
-#include "WiFi.h"
+#include <WiFi.h>
+#include <open62541.h>
+#include "Nodeset.h"
+
 
 const char* ssid     = "eDO";
 const char* password = "eDOfortiss";
 
+#define LED_RED 5
+#define LED_YELLOW 18
+#define LED_GREEN 19
+
 
 UA_ServerConfig *config;
 UA_Server *server;
-
+Nodeset *nodeset;
 
 const char *LogsLevelNames[6] = {"trace", "debug", "info", "warning", "error", "fatal"};
 const char *LogsCategoryNames[6] = {"network", "channel", "session", "server", "client", "userland"};
+
+int freq = 10000;
+uint8_t ledChannel = 0;
+uint8_t resolution = 8;
+unsigned long lastStatusLedUpdate = 0;
+uint8_t statusLedDutyCycleCount = 0;
+uint8_t statusLedDutyCycleDir = 1;
+
+void memUsage() {
+	UBaseType_t uxHighWaterMark = uxTaskGetStackHighWaterMark( NULL );
+	Serial.print( "Memory: " );
+	Serial.print(uxHighWaterMark );
+	Serial.print( " ");
+	Serial.println( esp_get_free_heap_size() );
+}
+
+void printCurrentTime() {
+	struct timeval tv;
+	time_t nowtime;
+	struct tm *nowtm;
+	char tmbuf[64], buf[64];
+
+	gettimeofday(&tv, NULL);
+	nowtime = tv.tv_sec;
+	nowtm = localtime(&nowtime);
+	strftime(tmbuf, sizeof tmbuf, "%Y-%m-%d %H:%M:%S", nowtm);
+	snprintf(buf, sizeof buf, "%s.%06ld", tmbuf, tv.tv_usec);
+	Serial.printf("Current time: %s\n", buf);
+}
 
 void UA_Log_Serial(UA_LogLevel level, UA_LogCategory category, const char *msg, va_list args) {
 	char tmpStr[400];
@@ -27,17 +64,16 @@ void UA_Log_Serial(UA_LogLevel level, UA_LogCategory category, const char *msg, 
 	tmpStr[len + 1] = '\0';
 
 	Serial.printf(tmpStr);
+
+	//memUsage();
 }
 
-
-
-WiFiServer testServer(80);
-
 void errorLoop() {
+	digitalWrite(LED_GREEN, LOW);
 	while(true) {
-		digitalWrite(5, HIGH);
+		digitalWrite(LED_RED, HIGH);
 		delay(100);
-		digitalWrite(5, LOW);
+		digitalWrite(LED_RED, LOW);
 		delay(100);
 	}
 }
@@ -45,17 +81,22 @@ void errorLoop() {
 void setupWifi() {
 	// We start by connecting to a WiFi network
 
-	Serial.println();
+	Serial.println("Setting up wifi...");
 	Serial.println();
 	Serial.print("Connecting to ");
 	Serial.println(ssid);
 
 	WiFi.begin(ssid, password);
 
+	short ledState = 0;
+
 	while (WiFi.status() != WL_CONNECTED) {
-		delay(500);
+		ledState = !ledState;
+		digitalWrite(LED_YELLOW, ledState);
+		delay(200);
 		Serial.print(".");
 	}
+	digitalWrite(LED_YELLOW, HIGH);
 
 	Serial.println("");
 	Serial.println("WiFi connected.");
@@ -63,86 +104,123 @@ void setupWifi() {
 	Serial.println(WiFi.localIP());
 
 	Serial.flush();
+}
 
-	testServer.begin();
+void setupTime() {
+
+	Serial.println("Setting up time...");
+
+	WiFiUDP ntpUDP;
+
+	// You can specify the time server pool and the offset (in seconds, can be
+	// changed later with setTimeOffset() ). Additionaly you can specify the
+	// update interval (in milliseconds, can be changed using setUpdateInterval() ).
+	NTPClient timeClient(ntpUDP);
+
+
+	timeClient.begin();
+	if (!timeClient.forceUpdate()) {
+		Serial.println("Could not get NTP time.");
+		return;
+	}
+	Serial.printf("Current epoch time = %lld\n", timeClient.getEpochTime());
+	Serial.print(timeClient.getFormattedDate());
+	Serial.print(timeClient.getFormattedTime());
+	struct timeval current = {
+			timeClient.getEpochTime(), // tv.sec
+			0 // tv.usec
+	};
+	struct timezone zone = {
+			3600, // tz_minuteswest
+			0
+	};
+	settimeofday(&current, &zone);
+	printCurrentTime();
 }
 
 void setup() {
 	Serial.begin(115200);
-	pinMode(5, OUTPUT);      // set the LED pin mode
+	pinMode(LED_RED, OUTPUT);
+	pinMode(LED_YELLOW, OUTPUT);
+	pinMode(LED_GREEN, OUTPUT);
 
 	Serial.println("Starting up...");
-	for (int i=0; i<5; i++) {
-		digitalWrite(5, HIGH);
+	for (int i=0; i<2; i++) {
+		digitalWrite(LED_RED, HIGH);
+		digitalWrite(LED_YELLOW, HIGH);
+		digitalWrite(LED_GREEN, HIGH);
 		delay(500);
-		digitalWrite(5, LOW);
+		digitalWrite(LED_RED, LOW);
+		digitalWrite(LED_YELLOW, LOW);
+		digitalWrite(LED_GREEN, LOW);
 		delay(500);
 	}
 
-	Serial.println("Setting up wifi...");
 	setupWifi();
 
+	//setupTime();
+
 	Serial.println("Setting up opcua...");
-	config = UA_ServerConfig_new_minimal(4840, NULL);
-	/*config->logger = UA_Log_Serial;
+	config = UA_ServerConfig_new_customBuffer(4840, NULL, 8192, 8192);
+	String localIp = WiFi.localIP().toString();
+	const UA_String customHostname = {
+			.length = localIp.length(),
+			.data = (UA_Byte *)localIp.c_str()
+	};
+	UA_ServerConfig_set_customHostname(config, customHostname);
+	config->logger = UA_Log_Serial;
+	Serial.println("Creating server...");
 	server = UA_Server_new(config);
-	if (UA_Server_run_startup(server) != UA_STATUSCODE_GOOD) {
+	Serial.println("run server...");
+	UA_StatusCode retVal = UA_Server_run_startup(server);
+	if (retVal != UA_STATUSCODE_GOOD) {
+		Serial.print("Creating OPC UA Server failed with code: ");
+		Serial.println(UA_StatusCode_name(retVal));
 		errorLoop();
-	}*/
-}
-
-void loopWifiClient(WiFiClient client) {
-	if (!client)
-		return;
-	Serial.println("New Client.");           // print a message out the serial port
-	String currentLine = "";                // make a String to hold incoming data from the client
-	while (client.connected()) {            // loop while the client's connected
-		if (client.available()) {             // if there's bytes to read from the client,
-			char c = client.read();             // read a byte, then
-			Serial.write(c);                    // print it out the serial monitor
-			if (c == '\n') {                    // if the byte is a newline character
-
-				// if the current line is blank, you got two newline characters in a row.
-				// that's the end of the client HTTP request, so send a response:
-				if (currentLine.length() == 0) {
-					// HTTP headers always start with a response code (e.g. HTTP/1.1 200 OK)
-					// and a content-type so the client knows what's coming, then a blank line:
-					client.println("HTTP/1.1 200 OK");
-					client.println("Content-type:text/html");
-					client.println();
-
-					// the content of the HTTP response follows the header:
-					client.print("Click <a href=\"/H\">here</a> to turn the LED on pin 5 on.<br>");
-					client.print("Click <a href=\"/L\">here</a> to turn the LED on pin 5 off.<br>");
-
-					// The HTTP response ends with another blank line:
-					client.println();
-					// break out of the while loop:
-					break;
-				} else {    // if you got a newline, then clear currentLine:
-					currentLine = "";
-				}
-			} else if (c != '\r') {  // if you got anything else but a carriage return character,
-				currentLine += c;      // add it to the end of the currentLine
-			}
-
-			// Check to see if the client request was "GET /H" or "GET /L":
-			if (currentLine.endsWith("GET /H")) {
-				digitalWrite(5, HIGH);               // GET /H turns the LED on
-			}
-			if (currentLine.endsWith("GET /L")) {
-				digitalWrite(5, LOW);                // GET /L turns the LED off
-			}
-		}
 	}
-	// close the connection:
-	client.stop();
-	Serial.println("Client Disconnected.");
+	Serial.println("OPC UA initialized");
+
+	nodeset = new Nodeset(server, UA_Log_Serial);
+	nodeset->createNodes();
+
+	digitalWrite(LED_YELLOW, LOW);
+	digitalWrite(LED_GREEN, HIGH);
+
+	ledcSetup(ledChannel, freq, resolution);
+	ledcAttachPin(LED_GREEN, ledChannel);
+	lastStatusLedUpdate = millis();
 }
+
 
 void loop() {
 
-	WiFiClient client = testServer.available();   // listen for incoming clients
-	loopWifiClient(client);
-	//UA_Server_run_iterate(server, true);
+	UA_Server_run_iterate(server, true);
+
+	/*for (int dutyCycle = 0; dutyCycle <= 125; dutyCycle++){
+		ledcWrite(ledChannel, dutyCycle);
+		delay(7);
+	}
+
+	for (int dutyCycle = 125; dutyCycle >= 0; dutyCycle--){
+		ledcWrite(ledChannel, dutyCycle);
+		delay(7);
+	}*/
+
+	lastStatusLedUpdate = millis();
+	if (statusLedDutyCycleDir == 1) {
+		statusLedDutyCycleCount+=2;
+		if (statusLedDutyCycleCount >= 125) {
+			// change direction
+			statusLedDutyCycleDir = 0;
+		}
+	} else {
+		statusLedDutyCycleCount-=2;
+		if (statusLedDutyCycleCount <= 2) {
+			// change direction
+			statusLedDutyCycleDir = 1;
+		}
+	}
+	ledcWrite(ledChannel, statusLedDutyCycleCount);
+
+
 }
