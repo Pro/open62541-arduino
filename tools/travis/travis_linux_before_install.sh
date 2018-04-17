@@ -8,8 +8,14 @@ cd arduino-1.8.5/hardware
 
 # Additionally get the ESP toolchain
 mkdir espressif && cd espressif
-git clone https://github.com/espressif/arduino-esp32 esp32
+
+# Use custom version until https://github.com/espressif/arduino-esp32/pull/1326 is fixed
+#git clone --depth 1 https://github.com/espressif/arduino-esp32 esp32
+#cd esp32
+git clone --depth 1 https://github.com/Pro/arduino-esp32 esp32
 cd esp32
+git checkout hotfix/asm
+
 git submodule update --init --recursive
 cd tools && python get.py
 cd ..
