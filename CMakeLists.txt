@@ -35,6 +35,12 @@ set(${${PROJECT_NAME}_BOARD}.upload.speed 921600)
 set(${${PROJECT_NAME}_BOARD}.build.flash_freq 80m)
 
 
+option(WIFI_SSID "Wifi SSID where the controller should log in")
+option(WIFI_PWD "Wifi password where the controller should log in")
+if(NOT WIFI_SSID OR NOT WIFI_PWD)
+    MESSAGE(FATAL_ERROR "You need to define WIFI_SSID and WIFI_PWD using cmake options")
+endif()
+
 # -----------------------------------
 # open62541 specific settings - BEGIN
 # -----------------------------------
@@ -46,12 +52,15 @@ set(UA_ENABLE_DISCOVERY ON)
 set(UA_ENABLE_ENCRYPTION OFF)
 set(UA_ENABLE_STATUSCODE_DESCRIPTIONS ON)
 set(UA_ENABLE_TYPENAMES ON)
+set(UA_ENABLE_AMALGAMATION ON CACHE BOOL "" FORCE)
 set(UA_LOGLEVEL 300)
+set(UA_NODESET_ENCODE_BINARY_SIZE 1024)
 add_subdirectory(lib/open62541)
-# Define the source code
+
+add_definitions(-DUA_ARCHITECTURE_ARDUINO)
+set_source_files_properties("${PROJECT_BINARY_DIR}/lib/open62541/open62541.c" PROPERTIES GENERATED TRUE)
 set(${PROJECT_NAME}_SRCS ${${PROJECT_NAME}_SRCS} "${PROJECT_BINARY_DIR}/lib/open62541/open62541.c")
 include_directories("${PROJECT_BINARY_DIR}/lib/open62541/")
-
 # -----------------------------------
 # open62541 specific settings - END
 # -----------------------------------
@@ -62,8 +71,12 @@ include_directories(${CMAKE_CURRENT_LIST_DIR}/lib/NTPClient/)
 
 set(${PROJECT_NAME}_ARDLIBS WiFi NTPClient)
 set(${PROJECT_NAME}_ARDLIBS_PATH ${ESP32_LIBRARIES_PATH})
-set(${PROJECT_NAME}_LIBS   esp32   wpa_supplicant lwip c)
+set(${PROJECT_NAME}_LIBS  gcc pp wpa phy wpa_supplicant core tcpip_adapter c_nano rtc wpa2 esp32 coexist app_update nghttp spiffs espnow nvs_flash esp_adc_cal log expat m c stdc++ heap mbedtls lwip net80211 pp wps)
 
 # Command to generate code arduino firmware (.hex file)
 generate_arduino_firmware(${PROJECT_NAME})
-add_dependencies(${PROJECT_NAME} open62541-amalgamation-source open62541-amalgamation-header)
+target_compile_options(${PROJECT_NAME} PRIVATE -fno-exceptions -DWIFI_SSID="${WIFI_SSID}" -DWIFI_PWD="${WIFI_PWD}")
+add_dependencies(${PROJECT_NAME} open62541 open62541-amalgamation-source open62541-amalgamation-header)
+
+get_target_property(CUSTOM_FLAGS  ${PROJECT_NAME} "COMPILE_FLAGS")
+set_target_properties(open62541-object PROPERTIES COMPILE_FLAGS ${CUSTOM_FLAGS})

@@ -7,9 +7,15 @@
 #include <open62541.h>
 #include "Nodeset.h"
 
+// You should define the SSID and PWD using compiler defines, e.g. gcc -DWIFI_SSID="sometest"
+#ifndef WIFI_SSID
+#error WIFI_SSID not defined. Use compiler defines to set it to a value
+#endif
+#ifndef WIFI_PWD
+#error WIFI_PWD not defined. Use compiler defines to set it to a value
+#endif
 
-const char* ssid     = "eDO";
-const char* password = "eDOfortiss";
+
 
 #define LED_RED 5
 #define LED_YELLOW 18
@@ -84,9 +90,9 @@ void setupWifi() {
 	Serial.println("Setting up wifi...");
 	Serial.println();
 	Serial.print("Connecting to ");
-	Serial.println(ssid);
+	Serial.println(WIFI_SSID);
 
-	WiFi.begin(ssid, password);
+	WiFi.begin(WIFI_SSID, WIFI_PWD);
 
 	short ledState = 0;
 
@@ -124,7 +130,7 @@ void setupTime() {
 		return;
 	}
 	Serial.printf("Current epoch time = %lld\n", timeClient.getEpochTime());
-	Serial.print(timeClient.getFormattedDate());
+	//Serial.print(timeClient.getFormattedDate());
 	Serial.print(timeClient.getFormattedTime());
 	struct timeval current = {
 			timeClient.getEpochTime(), // tv.sec
