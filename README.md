@@ -3,7 +3,7 @@ OPC UA for Arduino using open62541
 
 Example project for compiling [open62541](https://open62541.org) on an Arduino. This specific project uses an Adafruit ESP32 microcontroller with a WLAN module.
 
-[![Build Status](https://img.shields.io/travis/pro/open62541-arduino/master.svg)](https://travis-ci.org/pro/open62541-arduino)
+[![Build Status](https://img.shields.io/travis/Pro/open62541-arduino/master.svg)](https://travis-ci.org/Pro/open62541-arduino)
 
 ## How to build
 
