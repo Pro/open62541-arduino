@@ -1,0 +1,23 @@
+sudo: false
+
+language: c
+
+addons:
+  apt:
+    sources:
+      # see https://github.com/travis-ci/apt-source-whitelist/blob/master/ubuntu.json
+    packages:
+      - build-essential
+      - cmake
+      - python-six
+      - python3-six
+
+# combine all the commands into one single command. See https://github.com/travis-ci/travis-ci/issues/1066
+before_install: |
+ set -e
+ sh ./tools/travis/travis_linux_before_install.sh;
+
+
+script: |
+ set -e
+ sh ./tools/travis/travis_linux_script.sh;
