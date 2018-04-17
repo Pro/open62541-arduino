@@ -11,10 +11,9 @@ mkdir espressif && cd espressif
 
 # Use custom version until https://github.com/espressif/arduino-esp32/pull/1326 is fixed
 #git clone --depth 1 https://github.com/espressif/arduino-esp32 esp32
-#cd esp32
-git clone --depth 1 https://github.com/Pro/arduino-esp32 esp32
+git clone --depth 1 https://github.com/Pro/arduino-esp32 -b hotfix/asm esp32
+
 cd esp32
-git checkout hotfix/asm
 
 git submodule update --init --recursive
 cd tools && python get.py
