@@ -26,13 +26,9 @@ UA_ServerConfig *config;
 UA_Server *server;
 Nodeset *nodeset;
 
-const char *LogsLevelNames[6] = {"trace", "debug", "info", "warning", "error", "fatal"};
-const char *LogsCategoryNames[6] = {"network", "channel", "session", "server", "client", "userland"};
-
 int freq = 10000;
 uint8_t ledChannel = 0;
 uint8_t resolution = 8;
-unsigned long lastStatusLedUpdate = 0;
 uint8_t statusLedDutyCycleCount = 0;
 uint8_t statusLedDutyCycleDir = 1;
 
@@ -55,23 +51,7 @@ void printCurrentTime() {
 	nowtm = localtime(&nowtime);
 	strftime(tmbuf, sizeof tmbuf, "%Y-%m-%d %H:%M:%S", nowtm);
 	snprintf(buf, sizeof buf, "%s.%06ld", tmbuf, tv.tv_usec);
-	Serial.printf("Current time: %s\n", buf);
-}
-
-void UA_Log_Serial(UA_LogLevel level, UA_LogCategory category, const char *msg, va_list args) {
-	char tmpStr[400];
-	snprintf(tmpStr, 400, "[OPC UA] %s/%s\t", LogsLevelNames[level], LogsCategoryNames[category]);
-	char *start = &tmpStr[strlen(tmpStr)];
-
-	vsprintf(start, msg, args);
-
-	size_t len = strlen(tmpStr);
-	tmpStr[len] = '\n';
-	tmpStr[len + 1] = '\0';
-
-	Serial.printf(tmpStr);
-
-	//memUsage();
+	Serial.printf("Current time: %s (UTC)\n", buf);
 }
 
 void errorLoop() {
@@ -105,8 +85,7 @@ void setupWifi() {
 	digitalWrite(LED_YELLOW, HIGH);
 
 	Serial.println("");
-	Serial.println("WiFi connected.");
-	Serial.println("IP address: ");
+	Serial.print("WiFi connected. IP address: ");
 	Serial.println(WiFi.localIP());
 
 	Serial.flush();
@@ -121,23 +100,18 @@ void setupTime() {
 	// You can specify the time server pool and the offset (in seconds, can be
 	// changed later with setTimeOffset() ). Additionaly you can specify the
 	// update interval (in milliseconds, can be changed using setUpdateInterval() ).
-	NTPClient timeClient(ntpUDP);
+	NTPClient timeClient(ntpUDP, "de.pool.ntp.org");
 
-
-	timeClient.begin();
-	if (!timeClient.forceUpdate()) {
+	if (!timeClient.update()) {
 		Serial.println("Could not get NTP time.");
 		return;
 	}
-	Serial.printf("Current epoch time = %lld\n", timeClient.getEpochTime());
-	//Serial.print(timeClient.getFormattedDate());
-	Serial.print(timeClient.getFormattedTime());
 	struct timeval current = {
 			timeClient.getEpochTime(), // tv.sec
 			0 // tv.usec
 	};
 	struct timezone zone = {
-			3600, // tz_minuteswest
+			0, // tz_minuteswest
 			0
 	};
 	settimeofday(&current, &zone);
@@ -164,7 +138,7 @@ void setup() {
 
 	setupWifi();
 
-	//setupTime();
+	setupTime();
 
 	Serial.println("Setting up opcua...");
 	config = UA_ServerConfig_new_customBuffer(4840, NULL, 8192, 8192);
@@ -174,7 +148,7 @@ void setup() {
 			.data = (UA_Byte *)localIp.c_str()
 	};
 	UA_ServerConfig_set_customHostname(config, customHostname);
-	config->logger = UA_Log_Serial;
+	config->logger = UA_Log_Stdout;
 	Serial.println("Creating server...");
 	server = UA_Server_new(config);
 	Serial.println("run server...");
@@ -186,7 +160,7 @@ void setup() {
 	}
 	Serial.println("OPC UA initialized");
 
-	nodeset = new Nodeset(server, UA_Log_Serial);
+	nodeset = new Nodeset(server, UA_Log_Stdout);
 	nodeset->createNodes();
 
 	digitalWrite(LED_YELLOW, LOW);
@@ -194,7 +168,6 @@ void setup() {
 
 	ledcSetup(ledChannel, freq, resolution);
 	ledcAttachPin(LED_GREEN, ledChannel);
-	lastStatusLedUpdate = millis();
 }
 
 
@@ -202,17 +175,6 @@ void loop() {
 
 	UA_Server_run_iterate(server, true);
 
-	/*for (int dutyCycle = 0; dutyCycle <= 125; dutyCycle++){
-		ledcWrite(ledChannel, dutyCycle);
-		delay(7);
-	}
-
-	for (int dutyCycle = 125; dutyCycle >= 0; dutyCycle--){
-		ledcWrite(ledChannel, dutyCycle);
-		delay(7);
-	}*/
-
-	lastStatusLedUpdate = millis();
 	if (statusLedDutyCycleDir == 1) {
 		statusLedDutyCycleCount+=2;
 		if (statusLedDutyCycleCount >= 125) {
@@ -227,6 +189,5 @@ void loop() {
 		}
 	}
 	ledcWrite(ledChannel, statusLedDutyCycleCount);
-
 
 }
