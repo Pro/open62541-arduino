@@ -36,3 +36,9 @@ Otherwise you will get an error like:
 Guru Meditation Error: Core  1 panic'ed (Unhandled debug exception)
 Debug exception reason: Stack canary watchpoint triggered (loopTask) 
 ```
+
+## How to debug
+
+It is possible to use an OCD debugger to directly debug your code on the microcontroller using gdb (or any IDE which is based on gdb, like Eclipse, CLion, ...).
+
+Additional info can be found in the Wiki: [Debugging ESP32](https://github.com/Pro/open62541-arduino/wiki/debugging)
