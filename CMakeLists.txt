@@ -48,9 +48,10 @@ endif()
 # -----------------------------------
 # open62541 specific settings - BEGIN
 # -----------------------------------
-set(UA_ARCHITECTURE "arduino" CACHE STRING "" FORCE)
+include_directories("${ARDUINO_SDK_PATH}/hardware/espressif/esp32/tools/sdk/include/freertos/freertos")
+set(UA_ARCHITECTURE "freertosLWIP" CACHE STRING "" FORCE)
 set(UA_ENABLE_DISCOVERY_SEMAPHORE OFF CACHE BOOL "" FORCE)
-set(UA_FILE_NS0 "${PROJECT_SOURCE_DIR}/nodeset/Opc.Ua.NodeSet2.Custom.xml")
+set(UA_NAMESPACE_ZERO MINIMAL)
 set(UA_ENABLE_SUBSCRIPTIONS ON)
 set(UA_ENABLE_DISCOVERY ON)
 set(UA_ENABLE_ENCRYPTION OFF)
@@ -61,7 +62,7 @@ set(UA_LOGLEVEL 300)
 set(UA_NODESET_ENCODE_BINARY_SIZE 1024)
 add_subdirectory(lib/open62541)
 
-add_definitions(-DUA_ARCHITECTURE_ARDUINO)
+add_definitions(-DUA_ARCHITECTURE_FREERTOSLWIP)
 set_source_files_properties("${PROJECT_BINARY_DIR}/lib/open62541/open62541.c" PROPERTIES GENERATED TRUE)
 set(${PROJECT_NAME}_SRCS ${${PROJECT_NAME}_SRCS} "${PROJECT_BINARY_DIR}/lib/open62541/open62541.c")
 include_directories("${PROJECT_BINARY_DIR}/lib/open62541/")
