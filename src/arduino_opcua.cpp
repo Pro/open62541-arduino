@@ -175,6 +175,7 @@ void setup() {
 	ledcAttachPin(LED_GREEN, ledChannel);
 }
 
+//time_t lastMemOutput = 0;
 
 void loop() {
 
@@ -195,4 +196,14 @@ void loop() {
 	}
 	ledcWrite(ledChannel, statusLedDutyCycleCount);
 
+	/*struct timeval tv;
+	time_t nowtime;
+
+	gettimeofday(&tv, NULL);
+	nowtime = tv.tv_sec;
+
+	if (nowtime - lastMemOutput > 5) {
+		memUsage();
+		lastMemOutput = nowtime;
+	}*/
 }
