@@ -35,6 +35,10 @@ set(${${PROJECT_NAME}_BOARD}.upload.speed 921600)
 set(${${PROJECT_NAME}_BOARD}.build.flash_freq 80m)
 
 
+option(USE_WIFI "Defines if WIFI should be used, or alternatively the Ehternet feather" ON)
+if(USE_WIFI)
+    add_definitions(-DUSE_WIFI)
+endif()
 option(WIFI_SSID "Wifi SSID where the controller should log in")
 option(WIFI_PWD "Wifi password where the controller should log in")
 if(NOT WIFI_SSID OR NOT WIFI_PWD)

@@ -2,8 +2,13 @@
 #include "open62541.h"
 #include <NTPClient.h>
 
-
+#ifdef USE_WIFI
 #include <WiFi.h>
+#else
+#include <SPI.h>
+#include <Ethernet2.h>
+#endif
+
 #include <open62541.h>
 #include "Nodeset.h"
 
