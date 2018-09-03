@@ -4,7 +4,7 @@ language: c
 
 env:
   global:
-    - ARDUINO_SDK_PATH=/home/travis/build/Pro/open62541-arduino/arduino-1.8.5
+    - ARDUINO_SDK_PATH=/home/travis/build/Pro/open62541-arduino/arduino-1.8.6
 
 addons:
   apt:
