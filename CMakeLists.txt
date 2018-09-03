@@ -21,7 +21,7 @@ SET(CMAKE_RANLIB "${ARDUINO_SDK_PATH}/hardware/espressif/esp32/tools/xtensa-esp3
 set(${PROJECT_NAME}_BOARD featheresp32)
 
 # Define the source code
-set(${PROJECT_NAME}_SRCS src/arduino_opcua.cpp src/aes.c src/Nodeset.cpp src/Gripper.cpp)
+set(${PROJECT_NAME}_SRCS src/arduino_opcua.cpp src/Nodeset.cpp src/Gripper.cpp)
 
 # Define the port for uploading code to the Arduino
 # See following URL on how to assign persistend device names on Linux:
@@ -76,7 +76,7 @@ include_directories(${CMAKE_CURRENT_LIST_DIR}/lib/NTPClient/)
 
 set(${PROJECT_NAME}_ARDLIBS WiFi NTPClient)
 set(${PROJECT_NAME}_ARDLIBS_PATH ${ESP32_LIBRARIES_PATH})
-set(${PROJECT_NAME}_LIBS  gcc pp wpa phy wpa_supplicant core tcpip_adapter c_nano rtc wpa2 esp32 coexist app_update nghttp spiffs espnow nvs_flash esp_adc_cal log expat m c stdc++ heap mbedtls lwip net80211 pp wps)
+set(${PROJECT_NAME}_LIBS  gcc pp wpa phy wpa_supplicant core tcpip_adapter c_nano rtc wpa2 smartconfig_ack freertos esp32 coexist app_update nghttp spiffs espnow nvs_flash esp_adc_cal log expat m c stdc++ heap mbedtls lwip mesh net80211 pp wps bt)
 
 # Command to generate code arduino firmware (.hex file)
 generate_arduino_firmware(${PROJECT_NAME})
