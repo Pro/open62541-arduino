@@ -17,5 +17,8 @@ git submodule update --init --recursive
 cd tools && python get.py
 cd ..
 
+chmod +x tools/esptool/esptool.py
+
 # Increase the stack size
 sed -i 's/xTaskCreatePinnedToCore(loopTask, "loopTask", 8192, NULL, 1, NULL, ARDUINO_RUNNING_CORE);/xTaskCreatePinnedToCore(loopTask, "loopTask", 16384, NULL, 1, NULL, ARDUINO_RUNNING_CORE);/g' cores/esp32/main.cpp
+
