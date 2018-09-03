@@ -17,6 +17,16 @@ cmake -DWIFI_SSID="SOME_SSID" -DWIFI_PWD="SOME_PWD" ..
 make -j
 ```
 
+## How to flash
+
+If the previous step with `make`runs through successfully, you can use the CMAke target to upload/flash the program to your microcontroller:
+
+```
+make arduino_opcua-upload
+
+```
+If everything is set up correctly, the flashing should run through, otherwise please check the CMake files, you may need to adjust the COM port.
+
 ### Increase the stack size
 
 You need to manually increase the stack size of the loopTask in the file:
