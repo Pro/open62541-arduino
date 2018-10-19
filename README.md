@@ -17,6 +17,22 @@ cmake -DWIFI_SSID="SOME_SSID" -DWIFI_PWD="SOME_PWD" ..
 make -j
 ```
 
+## Setting a fixed ttyUSB Port
+
+If you plug in your microcontroller via USB, Linux will automatically assign a `/dev/ttyUSB` port, starting with index 0. Depending how many USB devices you have connected, it may happen that every time you plug the ESP32, it gets another `ttyUSB` name.
+To statically asign a custom port, follow these steps (for Ubuntu):
+
+1. Plug in the ESP32 and call `udevadm info -a -n /dev/ttyUSB0 | grep -E '({serial}|{idProduct}|{idVendor})' | head -n3` (make sure that `ttyUSB0` is the ESP32)
+2. Create a new udev rule with `sudo nano /etc/udev/rules.d/99-usb-serial.rules` and the following content, where you need to replace the values whith the one from previous command.
+    ```
+    SUBSYSTEM=="tty", ATTRS{idVendor}=="10c4", ATTRS{idProduct}=="ea60", ATTRS{serial}=="01435008", SYMLINK+="ttyUSB9"
+    ```
+3. Now unplug and plug in ESP32 again, and it will be on `/dev/ttyUSB9`
+
+See also:
+http://hintshop.ludvig.co.nz/show/persistent-names-usb-serial-devices/
+
+
 ## How to flash
 
 If the previous step with `make`runs through successfully, you can use the CMAke target to upload/flash the program to your microcontroller:
