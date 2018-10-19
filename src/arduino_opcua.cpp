@@ -61,6 +61,7 @@ void printCurrentTime() {
 
 void errorLoop() {
 	digitalWrite(LED_GREEN, LOW);
+	digitalWrite(LED_YELLOW, LOW);
 	while(true) {
 		digitalWrite(LED_RED, HIGH);
 		delay(100);
@@ -156,6 +157,10 @@ void setup() {
 	config->logger = UA_Log_Stdout;
 	Serial.println("Creating server...");
 	server = UA_Server_new(config);
+	if (!server) {
+		Serial.print("Creating OPC UA Server failed. See previous errors.");
+		errorLoop();
+	}
 	Serial.println("run server...");
 	UA_StatusCode retVal = UA_Server_run_startup(server);
 	if (retVal != UA_STATUSCODE_GOOD) {
